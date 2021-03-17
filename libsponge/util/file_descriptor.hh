@@ -18,7 +18,7 @@ class FileDescriptor {
         bool _eof = false;          //!< Flag indicating whether FDWrapper::_fd is at EOF
         bool _closed = false;       //!< Flag indicating whether FDWrapper::_fd has been closed
         unsigned _read_count = 0;   //!< The number of times FDWrapper::_fd has been read
-        unsigned _write_count = 0;  //!< The numberof times FDWrapper::_fd has been written
+        unsigned _write_count = 0;  //!< The number of times FDWrapper::_fd has been written
 
         //! Construct from a file descriptor number returned by the kernel
         explicit FDWrapper(const int fd);
