@@ -18,7 +18,7 @@ ByteStream::ByteStream(const size_t capacity):
 size_t ByteStream::write(const string &data) {
     size_t len = data.size();
     if(len + top > size) len = size - top;
-    // rewrite to insert method
+    // 队列，后面入队列，前面出队列
     for(size_t i=0; i<len; i++)
         cap[top+i] = data[i];
     top += len;
@@ -33,6 +33,9 @@ string ByteStream::peek_output(const size_t len) const {
 
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) { 
+    // 出队列，需要循环讲后面的元素提到前面来
+    // 这里没有检测元素出队列的元素是否多于队列中的元素
+    // 这里也可以使用循环数组，来节省数组复制的开销
     for(size_t i=0; i<top-len; i++){
         cap[i] = cap[len+i];
     }    
