@@ -9,8 +9,8 @@ using namespace std;
 void get_URL(const string &host, const string &path) {
     // Your code here.
 
-    // GET /somedir/page.html HTTP/1.1 
-    // Host: www.someschool.edu 
+    // GET /somedir/page.html HTTP/1.1
+    // Host: www.someschool.edu
     // Connection: close
 
     TCPSocket sock1;
@@ -23,7 +23,7 @@ void get_URL(const string &host, const string &path) {
     sock1.write(str);
 
     string message;
-    while((message = sock1.read()).size() != 0){
+    while ((message = sock1.read()).size() != 0) {
         cout << message;
     }
 
