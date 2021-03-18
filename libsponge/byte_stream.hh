@@ -11,6 +11,12 @@
 class ByteStream {
   private:
     // Your code here -- add private members as necessary.
+    string cap;
+    int size; // 总量
+    int top;  // 栈顶
+    bool end_flag = false;
+    size_t sum_write = 0;
+    size_t sum_read = 0;
 
     // Hint: This doesn't need to be a sophisticated data structure at
     // all, but if any of your tests are taking longer than a second,
