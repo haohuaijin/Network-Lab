@@ -11,9 +11,9 @@
 class ByteStream {
   private:
     // Your code here -- add private members as necessary.
-    string cap;
-    int size; // 总量
-    int top;  // 栈顶
+    std::string cap;
+    size_t size; // 总量
+    size_t top;  // 栈顶
     bool end_flag = false;
     size_t sum_write = 0;
     size_t sum_read = 0;

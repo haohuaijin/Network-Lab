@@ -17,13 +17,11 @@ ByteStream::ByteStream(const size_t capacity):
 
 size_t ByteStream::write(const string &data) {
     size_t len = data.size();
-    if(len + top > size) return 0;
-    else {
-        // rewrite to insert method
-        for(int i=0; i<len; i++)
-            cap[top+i] = data[i];
-        top += len;
-    } 
+    if(len + top > size) len = size - top;
+    // rewrite to insert method
+    for(size_t i=0; i<len; i++)
+        cap[top+i] = data[i];
+    top += len;
     sum_write += len;
     return len;
 }
@@ -35,20 +33,19 @@ string ByteStream::peek_output(const size_t len) const {
 
 //! \param[in] len bytes will be removed from the output side of the buffer
 void ByteStream::pop_output(const size_t len) { 
-    int temp = top;
-    for(int i=0; i<top-len; i++){
+    for(size_t i=0; i<top-len; i++){
         cap[i] = cap[len+i];
     }    
     top -= len;
+    sum_read += len;
 }
 
 //! Read (i.e., copy and then pop) the next "len" bytes of the stream
 //! \param[in] len bytes will be popped and returned
 //! \returns a string
 std::string ByteStream::read(const size_t len) {
-    string res = peek_output(len);
+    std::string res = peek_output(len);
     pop_output(len);
-    sum_read += len;
     return res;
 }
 
@@ -60,7 +57,7 @@ size_t ByteStream::buffer_size() const { return top; }
 
 bool ByteStream::buffer_empty() const { return top == 0; }
 
-bool ByteStream::eof() const { return false; }
+bool ByteStream::eof() const { return end_flag && (top == 0); }
 
 size_t ByteStream::bytes_written() const { return sum_write; }
 
