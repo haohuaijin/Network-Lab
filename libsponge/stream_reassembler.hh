@@ -12,12 +12,15 @@
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-    int index_record = 0;
-    std::unordered_map<int, string> buffer;
-    int total_bytes = 0;
+    size_t index_record = 0;
+    std::unordered_map<size_t, std::string > buffer;
+    size_t total_bytes = 0;
+    size_t eof_index = -1;
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+
+    void helper(const std::string &data, const size_t index);
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.

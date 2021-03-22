@@ -1,4 +1,5 @@
 #include "stream_reassembler.hh"
+#include <vector>
 
 // Dummy implementation of a stream reassembler.
 
@@ -12,29 +13,85 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity) {}
+StreamReassembler::StreamReassembler(const size_t capacity) : buffer(),_output(capacity), _capacity(capacity) {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
-    int len = data.size();
-    if(len + total_bytes + _output.remaining_capacity() > _capacity)
-        return;
-    if(index == index_record){
-        _output.write(data);
-        index_record++;
-    } else {
-        buffer.insert({index, data});
-        total_bytes += len;
+    if(eof) eof_index = index+data.size();
+    if(index_record == eof_index) _output.end_input();
+    std::vector<size_t> mark_erase;
+    for(auto &item : buffer){
+        if(index <= item.first && index+data.size() > item.first+item.second.size()){
+            mark_erase.push_back(item.first);
+            total_bytes -= item.second.size();
+        } else if(index >= item.first && index+data.size() <= item.first+item.second.size()){
+            return; 
+        }
     }
-    while(buffer.count(index_record) != 0){
-        std::string current_data = buffer[index_record];
-        _output.write(current_data);
-        total_bytes -= current_data.size();
-        buffer.erase(buffer.find(index_record));
-        index_record++;
-    } 
+    for(auto &k : mark_erase){
+        if(buffer.count(k) == 1)
+            buffer.erase(buffer.find(k));
+    }
+    helper(data, index);
+    std::vector<size_t> record_erase;
+    for(auto &i : buffer){
+        if(i.first < index_record){
+            helper(i.second, i.first);
+            record_erase.push_back(i.first);
+            total_bytes -= buffer[i.first].size();
+        } else if(i.first == index_record) {
+            while(buffer.count(index_record) == 1){
+                 _output.write(buffer[index_record]);
+                 total_bytes -= buffer[index_record].size();
+                 index_record += buffer[index_record].size();
+//                 if(index_record > _capacity) index_record = _capacity;
+                 if(index_record == eof_index) _output.end_input();
+                 record_erase.push_back(index_record);
+            }
+        }
+    }
+    for(auto &k : record_erase){
+        if(buffer.count(k) == 1)
+            buffer.erase(buffer.find(k));
+    }
+}
+
+void StreamReassembler::helper(const string &data, const size_t index){
+    if(index > index_record){ // index 大于当前写入 stream 的 index_record
+        if(buffer.count(index) == 1){
+            if(buffer[index].size() < data.size()){
+                total_bytes += data.size() - buffer[index].size();
+                buffer[index] = data;
+            }
+        } else {
+            buffer.insert({index, data});
+            total_bytes += data.size();
+        }
+    } else if (index == index_record) { // index 等于当前写入 stream 的 index_record
+        size_t len = _output.remaining_capacity();
+        _output.write(data);
+        if(len < data.size()){
+            index_record += len;
+        } else {
+            index_record += data.size();
+        }
+//        if(index_record > _capacity) index_record = _capacity;
+        if(index_record == eof_index) _output.end_input();
+    } else { // index 小于当前写入 stream 的 index_record
+        if(index + data.size() > index_record){
+            size_t len = _output.remaining_capacity();
+            _output.write(data.substr(index_record-index, data.size()+index-index_record));
+            if(len < data.size()+index-index_record){
+                index_record += len;
+            } else {
+                index_record += data.size()+index-index_record;
+            }
+//            if(index_record > _capacity) index_record = _capacity;
+            if(index_record == eof_index) _output.end_input();
+        }
+    }
 }
 
 size_t StreamReassembler::unassembled_bytes() const { return total_bytes; }
