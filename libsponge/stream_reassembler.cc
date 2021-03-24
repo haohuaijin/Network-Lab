@@ -22,19 +22,18 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     if(eof) eof_index = index+data.size();
     if(index_record == eof_index) _output.end_input();
     std::vector<size_t> mark_erase;
+
     for(auto &item : buffer){
         if(index <= item.first && index+data.size() > item.first+item.second.size()){
             mark_erase.push_back(item.first);
             total_bytes -= item.second.size();
-        } else if(index >= item.first && index+data.size() <= item.first+item.second.size()){
+        } else if(index >= item.first && index+data.size() <= item.first+item.second.size())
             return; 
-        }
     }
-    for(auto &k : mark_erase){
-        if(buffer.count(k) == 1)
-            buffer.erase(buffer.find(k));
-    }
+    for(auto &k : mark_erase) if(buffer.count(k) == 1) buffer.erase(buffer.find(k));
+
     helper(data, index);
+
     std::vector<size_t> record_erase;
     for(auto &i : buffer){
         if(i.first < index_record){
@@ -46,19 +45,16 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
                  _output.write(buffer[index_record]);
                  total_bytes -= buffer[index_record].size();
                  index_record += buffer[index_record].size();
-//                 if(index_record > _capacity) index_record = _capacity;
                  if(index_record == eof_index) _output.end_input();
                  record_erase.push_back(index_record);
             }
-        }
+        } 
     }
-    for(auto &k : record_erase){
-        if(buffer.count(k) == 1)
-            buffer.erase(buffer.find(k));
-    }
+    for(auto &k : record_erase) if(buffer.count(k) == 1)  buffer.erase(buffer.find(k));
 }
 
 void StreamReassembler::helper(const string &data, const size_t index){
+    size_t len = _output.remaining_capacity();
     if(index > index_record){ // index 大于当前写入 stream 的 index_record
         if(buffer.count(index) == 1){
             if(buffer[index].size() < data.size()){
@@ -70,28 +66,16 @@ void StreamReassembler::helper(const string &data, const size_t index){
             total_bytes += data.size();
         }
     } else if (index == index_record) { // index 等于当前写入 stream 的 index_record
-        size_t len = _output.remaining_capacity();
         _output.write(data);
-        if(len < data.size()){
-            index_record += len;
-        } else {
-            index_record += data.size();
-        }
-//        if(index_record > _capacity) index_record = _capacity;
-        if(index_record == eof_index) _output.end_input();
+        index_record += data.size() < len ? data.size() : len;
     } else { // index 小于当前写入 stream 的 index_record
         if(index + data.size() > index_record){
-            size_t len = _output.remaining_capacity();
-            _output.write(data.substr(index_record-index, data.size()+index-index_record));
-            if(len < data.size()+index-index_record){
-                index_record += len;
-            } else {
-                index_record += data.size()+index-index_record;
-            }
-//            if(index_record > _capacity) index_record = _capacity;
-            if(index_record == eof_index) _output.end_input();
+            size_t diff_len = data.size() + index - index_record;
+            _output.write(data.substr(index_record-index, diff_len));
+            index_record += diff_len < len ? diff_len : len; 
         }
     }
+    if(index_record == eof_index) _output.end_input();
 }
 
 size_t StreamReassembler::unassembled_bytes() const { return total_bytes; }
