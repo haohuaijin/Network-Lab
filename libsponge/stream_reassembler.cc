@@ -24,49 +24,45 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         eof_index = index + data.size();
     if (index_record == eof_index)
         _output.end_input();
-    std::vector<size_t> mark_erase;
+    std::vector<size_t> erase_key;
 
-    // 处理下面这种情况 "b",1,0 "ab",0,0
-    for (auto &item : buffer) {
-        if (index <= item.first && index + data.size() > item.first + item.second.size()) {
-            mark_erase.push_back(item.first);
-            total_bytes -= item.second.size();
-        } else if (index >= item.first && index + data.size() <= item.first + item.second.size())
+    // 处理下面这种情况 "c",2,0 "bcd",1,0
+    for (auto &i : buffer) {
+        if (index <= i.first && index + data.size() > i.first + i.second.size()) {
+            erase_key.push_back(i.first);
+            total_bytes -= i.second.size();
+        } else if (index >= i.first && index + data.size() <= i.first + i.second.size())
             return;
     }
-    for (auto &k : mark_erase)
-        if (buffer.count(k) == 1)
-            buffer.erase(buffer.find(k));
+    for (auto &k : erase_key)
+        buffer.erase(k);
 
     helper(data, index);
 
     // 查看是否有data可以输出到_output
-    std::vector<size_t> record_erase;
+    erase_key.clear();
     for (auto &i : buffer) {
-        if (i.first < index_record) {
-            helper(i.second, i.first);
-            record_erase.push_back(i.first);
+        if (i.first < index_record) {  // 处理"b",1,0; "ab",0,0
+            erase_key.push_back(i.first);
             total_bytes -= buffer[i.first].size();
+            helper(i.second, i.first);
         } else if (i.first == index_record) {
-            while (buffer.count(index_record) == 1) {
-                _output.write(buffer[index_record]);
+            while (buffer.count(index_record)) {
+                erase_key.push_back(index_record);
                 total_bytes -= buffer[index_record].size();
-                index_record += buffer[index_record].size();
-                if (index_record == eof_index)
-                    _output.end_input();
-                record_erase.push_back(index_record);
+                // 这一行放在最后是因为index_record会在helper里面更改
+                helper(buffer[index_record], index_record);
             }
         }
     }
-    for (auto &k : record_erase)
-        if (buffer.count(k) == 1)
-            buffer.erase(buffer.find(k));
+    for (auto &k : erase_key)
+        buffer.erase(k);
 }
 
 void StreamReassembler::helper(const string &data, const size_t index) {
     size_t len = _output.remaining_capacity();
     if (index > index_record) {  // index 大于当前写入 stream 的 index_record
-        if (buffer.count(index) == 1) {
+        if (buffer.count(index)) {
             if (buffer[index].size() < data.size()) {
                 total_bytes += data.size() - buffer[index].size();
                 buffer[index] = data;
