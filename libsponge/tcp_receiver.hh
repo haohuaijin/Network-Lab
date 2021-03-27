@@ -14,6 +14,11 @@
 //! the acknowledgment number and window size to advertise back to the
 //! remote TCPSender.
 class TCPReceiver {
+    bool SYN = false;
+    bool FIN = false;
+    WrappingInt32 ACKNO{0};
+    WrappingInt32 ISN{0};
+    uint64_t checkpoint = 0;
     //! Our data structure for re-assembling bytes.
     StreamReassembler _reassembler;
 
