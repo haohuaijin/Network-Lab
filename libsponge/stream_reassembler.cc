@@ -30,7 +30,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     for (auto &i : buffer) {
         if (index <= i.first && index + data.size() > i.first + i.second.size()) {
             erase_key.push_back(i.first);
-            total_bytes -= i.second.size();
+            total_bytes = total_bytes > i.second.size() ? total_bytes-i.second.size() : 0;
         } else if (index >= i.first && index + data.size() <= i.first + i.second.size())
             return;
     }
@@ -44,12 +44,12 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     for (auto &i : buffer) {
         if (i.first < index_record) {  // 处理"b",1,0; "ab",0,0
             erase_key.push_back(i.first);
-            total_bytes -= buffer[i.first].size();
+            total_bytes = total_bytes > buffer[i.first].size() ? total_bytes-buffer[i.first].size() : 0;
             helper(i.second, i.first);
         } else if (i.first == index_record) {
             while (buffer.count(index_record)) {
                 erase_key.push_back(index_record);
-                total_bytes -= buffer[index_record].size();
+                total_bytes = total_bytes >  buffer[index_record].size() ? total_bytes-buffer[index_record].size() : 0;
                 // 这一行放在最后是因为index_record会在helper里面更改
                 helper(buffer[index_record], index_record);
             }
