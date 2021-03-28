@@ -54,6 +54,7 @@ class StreamReassembler {
     //! \returns `true` if no substrings are waiting to be assembled
     bool empty() const;
 
+    // return the first unassembler bytes index
     size_t index() const { return index_record; }
 };
 
