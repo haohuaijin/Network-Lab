@@ -16,7 +16,41 @@
 //! maintains the Retransmission Timer, and retransmits in-flight
 //! segments if the retransmission timer expires.
 class TCPSender {
+  class Timer{
+    public:
+        Timer(size_t time = 0): count(time), isRun(false), isExpired(false) {}
+        void start(size_t init) { 
+            isRun = true; 
+            count = init;
+        }
+        void stop() { isRun = false; }
+        bool elapsed(size_t times) { 
+            if(count > times) {  
+                count -= times;
+            } else {
+                isExpired = true;
+                isRun = false;
+            }
+            return isExpired;
+        }
+        bool is_run() { return isRun; }
+    private:
+        size_t count;
+        bool isRun;
+        bool isExpired;
+  };
   private:
+    Timer rTimer{0}; 
+    
+    //record the window size
+    uint16_t wSize = 1;
+
+    //record the sender but not ack bytes 
+    uint64_t fbytes = 0;
+    
+    bool is_send_syn = false;
+
+
     //! our initial sequence number, the number for our SYN.
     WrappingInt32 _isn;
 
@@ -32,6 +66,9 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
+    private:
+        void send_syn();
+        void send_fin();
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
