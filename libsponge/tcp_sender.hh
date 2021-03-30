@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <queue>
+#include <utility>
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -49,7 +50,8 @@ class TCPSender {
     uint64_t fbytes = 0;
     
     bool is_send_syn = false;
-
+    
+    std::vector<std::pair<uint64_t, TCPSegment>> buffer{};
 
     //! our initial sequence number, the number for our SYN.
     WrappingInt32 _isn;
