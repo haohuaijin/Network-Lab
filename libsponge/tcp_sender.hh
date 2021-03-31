@@ -51,6 +51,7 @@ class TCPSender {
     
     bool is_send_syn = false;
     
+    //这里的buffer可以用一个class代替来获得更加简洁的代码
     std::vector<std::pair<uint64_t, TCPSegment>> buffer{};
 
     //! our initial sequence number, the number for our SYN.

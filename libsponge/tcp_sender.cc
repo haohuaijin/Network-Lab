@@ -75,11 +75,11 @@ void TCPSender::fill_window() {
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) { 
     wSize = window_size;
     uint64_t abs_ackno = unwrap(ackno, _isn, _next_seqno);
-    while(buffer.size() > 0 && buffer[0].first <= abs_ackno){
+    // 这里的buffer[0].first+buffer[0].second.length_in_sequence_space()等于下一个序列号。 
+    while(buffer.size() > 0 && (buffer[0].first+buffer[0].second.length_in_sequence_space() <= abs_ackno)){
         fbytes -= buffer[0].second.length_in_sequence_space();
         buffer.erase(buffer.begin());
     }
-    fill_window();
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
