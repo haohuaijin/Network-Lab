@@ -32,58 +32,24 @@ void TCPSender::fill_window() {
     if(buffer_len == 0 && !_stream.eof()) return;
     //TCPConfig::MAX_PAYLOAD_SIZE
     while(wSize > TCPConfig::MAX_PAYLOAD_SIZE && buffer_len > TCPConfig::MAX_PAYLOAD_SIZE){
-        wSize -= TCPConfig::MAX_PAYLOAD_SIZE;
-        buffer_len -= TCPConfig::MAX_PAYLOAD_SIZE;
         TCPSegment t;     
-        t.header().seqno = next_seqno();
-        t.payload() = Buffer(_stream.read(TCPConfig::MAX_PAYLOAD_SIZE));
-        _segments_out.push(t);
-
-        buffer.push_back(make_pair(_next_seqno, t));
-
-        fbytes += TCPConfig::MAX_PAYLOAD_SIZE;
-        _next_seqno += TCPConfig::MAX_PAYLOAD_SIZE;
+        send_segments(t, TCPConfig::MAX_PAYLOAD_SIZE);
+        buffer_len -= TCPConfig::MAX_PAYLOAD_SIZE;
     }
     //这个条件需要修改
     if((wSize == 0 && fbytes == 0) && !_stream.eof()){
         send_empty_segment();
     }else if(wSize > buffer_len && buffer_len){
-        wSize -= buffer_len;
         TCPSegment t;
-        t.header().seqno = next_seqno();
-        t.payload() = Buffer(_stream.read(buffer_len));
-    
-        buffer.push_back(make_pair(_next_seqno, t));
-
-        fbytes += buffer_len;
-        _next_seqno += buffer_len;
-
         if(_stream.eof() && wSize > 0 && !_stream.buffer_size()){
             t.header().fin = true;    
-            ++fbytes;
-            ++_next_seqno;
+            ++buffer_len;
         }
-
-        _segments_out.push(t);
+        send_segments(t, buffer_len);
     } else if(wSize <= buffer_len && wSize) {
         TCPSegment t;
-        t.header().seqno = next_seqno();
-        t.payload() = Buffer(_stream.read(wSize));
-        
-        buffer.push_back(make_pair(_next_seqno, t));
-
-        fbytes += wSize;
-        _next_seqno += wSize;
-
-        _segments_out.push(t);
-        wSize = 0;
+        send_segments(t, wSize);
     }
-    /*
-    if(_stream.eof() && wSize > 0 && !_stream.buffer_size()){
-        send_fin();
-        return;
-    }
-    */
     if(!rTimer.is_run() && fbytes != 0)
         rTimer.start(Rto);
 }
@@ -128,25 +94,7 @@ void TCPSender::send_syn(){
     is_send_syn = true;
     TCPSegment t;     
     t.header().syn = true;
-    t.header().seqno = _isn;
-    fbytes += 1;
-    _next_seqno += 1;
-    _segments_out.push(t);
-    wSize -= 1;
-    buffer.push_back(make_pair(0, t));
-    if(!rTimer.is_run() && fbytes != 0)
-    rTimer.start(Rto);
-}
-void TCPSender::send_fin(){
-    TCPSegment t;     
-    t.header().fin = true;
-    t.header().seqno = _isn;
-    fbytes += 1;
-    _next_seqno += 1;
-    _segments_out.push(t);
-    wSize -= 1;
-    buffer.push_back(make_pair(_next_seqno, t));
+    send_segments(t, 1);
     if(!rTimer.is_run() && fbytes != 0)
         rTimer.start(Rto);
 }
-
