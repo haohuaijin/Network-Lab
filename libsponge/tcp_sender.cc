@@ -29,7 +29,7 @@ uint64_t TCPSender::bytes_in_flight() const { return fbytes; }
 void TCPSender::fill_window() {
     if(!is_send_syn){ send_syn(); return; }
     size_t buffer_len = _stream.buffer_size();
-    if(buffer_len == 0 && !_stream.eof()) return;
+    if(buffer_len == 0 && !_stream.input_ended()) return;
     //TCPConfig::MAX_PAYLOAD_SIZE
     while(wSize > TCPConfig::MAX_PAYLOAD_SIZE && buffer_len > TCPConfig::MAX_PAYLOAD_SIZE){
         TCPSegment t;     
@@ -37,15 +37,15 @@ void TCPSender::fill_window() {
         buffer_len -= TCPConfig::MAX_PAYLOAD_SIZE;
     }
     //这个条件需要修改
-    if((wSize == 0 && fbytes == 0) && !_stream.eof()){
+    if((wSize == 0 && fbytes == 0) && !_stream.input_ended()){
         send_empty_segment();
-    }else if(wSize > buffer_len && buffer_len){
+    }else if(wSize > buffer_len){
         TCPSegment t;
-        if(_stream.eof() && wSize > 0 && !_stream.buffer_size()){
-            t.header().fin = true;    
-            ++buffer_len;
+        if(_stream.input_ended()) {
+            send_segments(t, buffer_len+1, false, true);
+        } else {
+            send_segments(t, buffer_len);
         }
-        send_segments(t, buffer_len);
     } else if(wSize <= buffer_len && wSize) {
         TCPSegment t;
         send_segments(t, wSize);
@@ -74,8 +74,11 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 void TCPSender::tick(const size_t ms_since_last_tick) { 
     rTimer.elapsed(ms_since_last_tick);
     if(!rTimer.is_run()){
+    /*
         for(auto i : buffer)
             _segments_out.push(i.second);
+     */
+        _segments_out.push(buffer[0].second);
         con_retran += 1;
         Rto *= 2;
         rTimer.start(Rto);
@@ -93,8 +96,20 @@ void TCPSender::send_empty_segment() {
 void TCPSender::send_syn(){
     is_send_syn = true;
     TCPSegment t;     
-    t.header().syn = true;
-    send_segments(t, 1);
+    send_segments(t, 1, true, false);
     if(!rTimer.is_run() && fbytes != 0)
         rTimer.start(Rto);
 }
+
+void TCPSender::send_segments(TCPSegment& t, uint64_t len, bool is_syn, bool is_fin){
+    if(is_syn) t.header().syn = true;
+    if(is_fin) t.header().fin = true;
+    t.header().seqno = next_seqno();
+    t.payload() = Buffer(_stream.read((is_syn||is_fin) ? len-1 : len));
+    _segments_out.push(t);                       //send to peer
+    buffer.push_back(make_pair(_next_seqno, t)); //store for retransmission
+    wSize -= len;
+    fbytes += len;
+    _next_seqno += len;
+}
+

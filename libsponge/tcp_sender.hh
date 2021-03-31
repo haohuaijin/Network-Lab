@@ -75,7 +75,7 @@ class TCPSender {
 
     private:
         void send_syn();
-        void send_segments(TCPSegment& t, uint64_t len);
+        void send_segments(TCPSegment& t, uint64_t len, bool is_syn=false, bool is_fin=false);
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
