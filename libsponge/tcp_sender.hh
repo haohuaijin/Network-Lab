@@ -19,7 +19,7 @@
 class TCPSender {
   class Timer{
     public:
-        Timer(size_t time = 0): count(time), isRun(false), isExpired(false) {}
+        Timer(size_t time): count(time), isRun(false), isExpired(false) {}
         void start(size_t init) { 
             isRun = true; 
             count = init;
@@ -50,6 +50,10 @@ class TCPSender {
     uint64_t fbytes = 0;
     
     bool is_send_syn = false;
+
+    unsigned int con_retran = 0;
+
+    unsigned int Rto;
     
     //这里的buffer可以用一个class代替来获得更加简洁的代码
     std::vector<std::pair<uint64_t, TCPSegment>> buffer{};
