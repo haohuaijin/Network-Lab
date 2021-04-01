@@ -17,43 +17,38 @@
 //! maintains the Retransmission Timer, and retransmits in-flight
 //! segments if the retransmission timer expires.
 class TCPSender {
-  class Timer{
-    public:
-        Timer(size_t time): count(time), isRun(false) {}
-        void start(size_t init) { 
-            isRun = true; 
+    class Timer {
+      public:
+        Timer(size_t time) : count(time), isRun(false) {}
+        void start(size_t init) {
+            isRun = true;
             count = init;
         }
         void stop() { isRun = false; }
-        void  elapsed(size_t times) { 
-            if(count > times)  
+        void elapsed(size_t times) {
+            if (count > times)
                 count -= times;
-            else 
+            else
                 isRun = false;
         }
         bool is_run() { return isRun; }
-    private:
+
+      private:
         size_t count;
         bool isRun;
-  };
-  private:
-    Timer rTimer{0}; 
-    
-    //record the window size
-    uint16_t wSize = 1;
+    };
 
-    //record the sender but not ack bytes 
-    uint64_t fbytes = 0;
-    
+  private:
+    Timer rTimer{0};
+    uint16_t wSize = 1;   // window size
+    uint64_t fbytes = 0;  // sender but not ack bytes
     bool is_send_syn = false;
     bool is_send_fin = false;
-    uint64_t curr_ack = 0;    
-    bool is_detective = false;
+    uint64_t curr_ack = 0;        // ackno form receive
+    bool is_detective = false;    // if the wSize is zero, I will think wSize is one, this is the flag
+    unsigned int con_retran = 0;  // consecutive retransmissions
+    unsigned int Rto;             // retransmission_timeout
 
-    unsigned int con_retran = 0;
-
-    unsigned int Rto;
-    
     //这里的buffer可以用一个class代替来获得更加简洁的代码
     std::vector<std::pair<uint64_t, TCPSegment>> buffer{};
 
@@ -72,9 +67,10 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
-    private:
-        void send_syn();
-        void send_segments(TCPSegment& t, uint64_t len, bool is_syn=false, bool is_fin=false);
+  private:
+    void send_syn();
+    void send_segments(TCPSegment &t, uint64_t len, bool is_syn = false, bool is_fin = false);
+
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,

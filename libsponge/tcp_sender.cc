@@ -2,8 +2,8 @@
 
 #include "tcp_config.hh"
 
-#include <random>
 #include <iostream>
+#include <random>
 
 // Dummy implementation of a TCP sender
 
@@ -27,106 +27,95 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
 uint64_t TCPSender::bytes_in_flight() const { return fbytes; }
 
 void TCPSender::fill_window() {
-    if(!is_send_syn){ send_syn(); return; }
-    if(is_send_fin) return;
+    if (!is_send_syn) {
+        send_syn();
+        return;
+    }
+    if (is_send_fin)
+        return;
     size_t buffer_len = _stream.buffer_size();
-    if(buffer_len == 0 && !_stream.eof()) return;
-    //TCPConfig::MAX_PAYLOAD_SIZE
-    while(wSize > TCPConfig::MAX_PAYLOAD_SIZE && buffer_len > TCPConfig::MAX_PAYLOAD_SIZE){
-        TCPSegment t;     
+    if (buffer_len == 0 && !_stream.eof())
+        return;
+    // TCPConfig::MAX_PAYLOAD_SIZE
+    while (wSize > TCPConfig::MAX_PAYLOAD_SIZE && buffer_len > TCPConfig::MAX_PAYLOAD_SIZE) {
+        TCPSegment t;
         send_segments(t, TCPConfig::MAX_PAYLOAD_SIZE);
         buffer_len -= TCPConfig::MAX_PAYLOAD_SIZE;
     }
-    if((wSize == 0 && fbytes == 0) && _stream.eof()){
+    if ((wSize == 0 && fbytes == 0) && _stream.eof()) {
         TCPSegment t;
-        /*
-        t.header().seqno = next_seqno();
-        t.header().fin = true;
-        _segments_out.push(t);
-        buffer.push_back(make_pair(_next_seqno, t)); //store for retransmission
-        fbytes += 1;
-        _next_seqno += 1;
-        */
         send_segments(t, 1, false, true);
         is_detective = true;
         is_send_fin = true;
     }
     //这个条件需要修改
-    if((wSize == 0 && fbytes == 0) && !_stream.eof()){
+    if ((wSize == 0 && fbytes == 0) && !_stream.eof()) {
         TCPSegment t;
-        /*
-        t.header().seqno = next_seqno();
-        t.payload() = Buffer(_stream.read(1));
-        _segments_out.push(t);
-        buffer.push_back(make_pair(_next_seqno, t)); //store for retransmission
-        fbytes += 1;
-        _next_seqno += 1;
-        */
         send_segments(t, 1);
         is_detective = true;
-    }else if(wSize >= buffer_len+1){
+    } else if (wSize >= buffer_len + 1) {
         TCPSegment t;
-        if(_stream.input_ended()) {
-            if(!is_send_fin){
+        if (_stream.input_ended()) {
+            if (!is_send_fin) {
                 is_send_fin = true;
-                send_segments(t, buffer_len+1, false, true);
+                send_segments(t, buffer_len + 1, false, true);
             }
         } else {
             send_segments(t, buffer_len);
         }
-    } else if(wSize <= buffer_len && wSize) {
+    } else if (wSize <= buffer_len && wSize) {
         TCPSegment t;
         send_segments(t, wSize);
     }
-    if(!rTimer.is_run() && fbytes != 0)
+    if (!rTimer.is_run() && fbytes != 0)
         rTimer.start(Rto);
-//    std::cout << " the outsize is " << _segments_out.size() << std::endl;
 }
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)
 //! \param window_size The remote receiver's advertised window size
-void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) { 
+void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ackno = unwrap(ackno, _isn, _next_seqno);
 
-    if(is_detective) is_detective = false;
+    if (is_detective)
+        is_detective = false;
 
+    //when we receive partially acknowledges, we drop it
     bool flag = false;
-    for(auto i:buffer)
-        if(abs_ackno == i.first+i.second.length_in_sequence_space())
+    for (auto i : buffer)
+        if (abs_ackno == i.first + i.second.length_in_sequence_space())
             flag = true;
-    if(abs_ackno > curr_ack && !flag){ //need change
-        wSize = 0;
+    if (abs_ackno > curr_ack && !flag)  // need change
         return;
-    }
 
-    // 这里的buffer[0].first+buffer[0].second.length_in_sequence_space()等于下一个序列号。 
-    while(buffer.size() > 0 && (buffer[0].first+buffer[0].second.length_in_sequence_space() <= abs_ackno)){
+    // 这里的buffer[0].first+buffer[0].second.length_in_sequence_space()等于下一个序列号。
+    while (buffer.size() > 0 && (buffer[0].first + buffer[0].second.length_in_sequence_space() <= abs_ackno)) {
         fbytes -= buffer[0].second.length_in_sequence_space();
         buffer.erase(buffer.begin());
     }
-//    std::cout << "the ackno is " << ackno;
-//    std::cout << " the ftybes is " << _segments_out.size() << std::endl;
     wSize = window_size;
-    if(abs_ackno <= curr_ack) return; //if the ackno is previous, we don't restart timer.
+    if (abs_ackno <= curr_ack)
+        return;  // if the ackno is previous, we don't restart timer.
     curr_ack = abs_ackno;
-    std::cout << "the ackno is " << ackno;
-    std::cout << " the ftybes is " << _segments_out.size() << std::endl;
 
     con_retran = 0;
     Rto = _initial_retransmission_timeout;
     rTimer.stop();
-    if(fbytes != 0) rTimer.start(Rto);
+    if (fbytes != 0)
+        rTimer.start(Rto);
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void TCPSender::tick(const size_t ms_since_last_tick) { 
+void TCPSender::tick(const size_t ms_since_last_tick) {
     rTimer.elapsed(ms_since_last_tick);
-    if(!rTimer.is_run()){
-        if(buffer.empty()) return; 
+    if (!rTimer.is_run()) {
+        if (buffer.empty())
+            return;
         _segments_out.push(buffer[0].second);
         con_retran += 1;
-        if(is_detective) ;
-        else Rto *= 2;
+        if (is_detective)
+            ;
+        else
+            Rto *= 2;
         rTimer.start(Rto);
     }
 }
@@ -139,23 +128,24 @@ void TCPSender::send_empty_segment() {
     _segments_out.push(t);
 }
 
-void TCPSender::send_syn(){
+void TCPSender::send_syn() {
     is_send_syn = true;
-    TCPSegment t;     
+    TCPSegment t;
     send_segments(t, 1, true, false);
-    if(!rTimer.is_run() && fbytes != 0)
+    if (!rTimer.is_run() && fbytes != 0)
         rTimer.start(Rto);
 }
 
-void TCPSender::send_segments(TCPSegment& t, uint64_t len, bool is_syn, bool is_fin){
-    if(is_syn) t.header().syn = true;
-    if(is_fin) t.header().fin = true;
+void TCPSender::send_segments(TCPSegment &t, uint64_t len, bool is_syn, bool is_fin) {
+    if (is_syn)
+        t.header().syn = true;
+    if (is_fin)
+        t.header().fin = true;
     t.header().seqno = next_seqno();
-    t.payload() = Buffer(_stream.read((is_syn||is_fin) ? len-1 : len));
-    _segments_out.push(t);                       //send to peer
-    buffer.push_back(make_pair(_next_seqno, t)); //store for retransmission
-    wSize = wSize > len ? wSize-len : 0;
+    t.payload() = Buffer(_stream.read((is_syn || is_fin) ? len - 1 : len));
+    _segments_out.push(t);                        // send to peer
+    buffer.push_back(make_pair(_next_seqno, t));  // store for retransmission
+    wSize = wSize > len ? wSize - len : 0;
     fbytes += len;
     _next_seqno += len;
 }
-
