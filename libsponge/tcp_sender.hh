@@ -19,26 +19,22 @@
 class TCPSender {
   class Timer{
     public:
-        Timer(size_t time): count(time), isRun(false), isExpired(false) {}
+        Timer(size_t time): count(time), isRun(false) {}
         void start(size_t init) { 
             isRun = true; 
             count = init;
         }
         void stop() { isRun = false; }
-        bool elapsed(size_t times) { 
-            if(count > times) {  
+        void  elapsed(size_t times) { 
+            if(count > times)  
                 count -= times;
-            } else {
-                isExpired = true;
+            else 
                 isRun = false;
-            }
-            return isExpired;
         }
         bool is_run() { return isRun; }
     private:
         size_t count;
         bool isRun;
-        bool isExpired;
   };
   private:
     Timer rTimer{0}; 
@@ -50,6 +46,9 @@ class TCPSender {
     uint64_t fbytes = 0;
     
     bool is_send_syn = false;
+    bool is_send_fin = false;
+    uint64_t curr_ack = 0;    
+    bool is_detective = false;
 
     unsigned int con_retran = 0;
 
