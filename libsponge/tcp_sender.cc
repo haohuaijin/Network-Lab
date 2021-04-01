@@ -2,7 +2,6 @@
 
 #include "tcp_config.hh"
 
-#include <iostream>
 #include <random>
 
 // Dummy implementation of a TCP sender
@@ -36,35 +35,31 @@ void TCPSender::fill_window() {
     size_t buffer_len = _stream.buffer_size();
     if (buffer_len == 0 && !_stream.eof())
         return;
-    // TCPConfig::MAX_PAYLOAD_SIZE
+
     while (wSize > TCPConfig::MAX_PAYLOAD_SIZE && buffer_len > TCPConfig::MAX_PAYLOAD_SIZE) {
         TCPSegment t;
         send_segments(t, TCPConfig::MAX_PAYLOAD_SIZE);
         buffer_len -= TCPConfig::MAX_PAYLOAD_SIZE;
     }
-    if ((wSize == 0 && fbytes == 0) && _stream.eof()) {
-        TCPSegment t;
-        send_segments(t, 1, false, true);
+
+    TCPSegment t;
+    //send detective segments
+    if ((wSize == 0 && fbytes == 0)) {
         is_detective = true;
-        is_send_fin = true;
-    }
-    //这个条件需要修改
-    if ((wSize == 0 && fbytes == 0) && !_stream.eof()) {
-        TCPSegment t;
-        send_segments(t, 1);
-        is_detective = true;
+        if(_stream.eof()) {
+            is_send_fin = true;            
+            send_segments(t, buffer_len + 1, false, true);
+        } else {
+            send_segments(t, 1);
+        }
     } else if (wSize >= buffer_len + 1) {
-        TCPSegment t;
         if (_stream.input_ended()) {
-            if (!is_send_fin) {
-                is_send_fin = true;
-                send_segments(t, buffer_len + 1, false, true);
-            }
+            is_send_fin = true;
+            send_segments(t, buffer_len + 1, false, true);
         } else {
             send_segments(t, buffer_len);
         }
     } else if (wSize <= buffer_len && wSize) {
-        TCPSegment t;
         send_segments(t, wSize);
     }
     if (!rTimer.is_run() && fbytes != 0)
@@ -76,6 +71,7 @@ void TCPSender::fill_window() {
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ackno = unwrap(ackno, _isn, _next_seqno);
 
+    //reset the is_detective
     if (is_detective)
         is_detective = false;
 
@@ -108,7 +104,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 void TCPSender::tick(const size_t ms_since_last_tick) {
     rTimer.elapsed(ms_since_last_tick);
     if (!rTimer.is_run()) {
-        if (buffer.empty())
+        if (buffer.empty()) //if buffer empty, we can't retransmission segment
             return;
         _segments_out.push(buffer[0].second);
         con_retran += 1;
