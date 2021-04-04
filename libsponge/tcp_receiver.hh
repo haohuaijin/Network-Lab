@@ -26,6 +26,10 @@ class TCPReceiver {
     size_t _capacity;
 
   public:
+    
+    uint64_t ckpoint() { return checkpoint; }
+    WrappingInt32 isn() { return ISN; }
+
     //! \brief Construct a TCP receiver
     //!
     //! \param capacity the maximum number of bytes that the receiver will
