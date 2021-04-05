@@ -20,7 +20,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         return;
     uint64_t index = unwrap(seg.header().seqno, ISN, checkpoint);
     if(seg.header().seqno == ISN && seg.payload().size() != 0 && repeat) return;
-    if(index >= checkpoint + _capacity - unassembled_bytes()) return;
+    if(index >= checkpoint + _capacity - unassembled_bytes() + 1) return;
     _reassembler.push_substring(seg.payload().copy(), (index > 0 ? index - 1 : 0), seg.header().fin);
     checkpoint = index;
     if (seg.header().seqno == ACKNO || seg.header().syn) {

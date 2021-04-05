@@ -31,11 +31,20 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         _sender.ack_received(seg.header().ackno, seg.header().win);
     _sender.fill_window();
 
+/*
+    std::cout << " len: " << _sender.segments_out().size();
+    std::cout << " re_ackno: " << _receiver.ackno().value();
+    std::cout << " seg_seqno: " << seg.header().seqno << std::endl;
+    */
+
+    //std::cout << " unbytes: " << unassembled_bytes() << std::endl;
+
+    //send ack for new data
     if(_sender.segments_out().empty()){
         bool c1 = (_receiver.ackno().value().raw_value() >  seg.header().seqno.raw_value());
         bool c2 = (seg.header().seqno.raw_value() >= _receiver.ckpoint() + _cfg.recv_capacity + _receiver.isn().raw_value());
         if(c1 || c2)
-            _sender._sender.send_empty_segment();
+            _sender.send_empty_segment();
     } 
 
     while(!_sender.segments_out().empty())
@@ -67,7 +76,6 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
         set_error();
     }
     test_stop_connection();
-    _sender.fill_window();
     while(!_sender.segments_out().empty()){
         _segments_out.push(segment_to_send());
     }
@@ -106,7 +114,7 @@ TCPConnection::~TCPConnection() {
     }
 }
 
-TCPSegment& TCPConnection::segment_to_send(){
+TCPSegment TCPConnection::segment_to_send(){
     TCPSegment t = _sender.segments_out().front();
     _sender.segments_out().pop();
     if(_receiver.ackno().has_value()) {
