@@ -26,7 +26,6 @@ class TCPReceiver {
     size_t _capacity;
 
   public:
-    
     uint64_t ckpoint() { return checkpoint; }
     WrappingInt32 isn() { return ISN; }
 

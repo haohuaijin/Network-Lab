@@ -43,11 +43,11 @@ void TCPSender::fill_window() {
     }
 
     TCPSegment t;
-    //send detective segments
+    // send detective segments
     if ((wSize == 0 && fbytes == 0)) {
         is_detective = true;
-        if(_stream.eof()) {
-            is_send_fin = true;            
+        if (_stream.eof()) {
+            is_send_fin = true;
             send_segments(t, buffer_len + 1, false, true);
         } else {
             send_segments(t, 1);
@@ -71,11 +71,11 @@ void TCPSender::fill_window() {
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ackno = unwrap(ackno, _isn, _next_seqno);
 
-    //reset the is_detective
+    // reset the is_detective
     if (is_detective)
         is_detective = false;
 
-    //when we receive partially acknowledges, we drop it
+    // when we receive partially acknowledges, we drop it
     bool flag = false;
     for (auto i : buffer)
         if (abs_ackno == i.first + i.second.length_in_sequence_space())
@@ -104,7 +104,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 void TCPSender::tick(const size_t ms_since_last_tick) {
     rTimer.elapsed(ms_since_last_tick);
     if (!rTimer.is_run()) {
-        if (buffer.empty()) //if buffer empty, we can't retransmission segment
+        if (buffer.empty())  // if buffer empty, we can't retransmission segment
             return;
         _segments_out.push(buffer[0].second);
         con_retran += 1;

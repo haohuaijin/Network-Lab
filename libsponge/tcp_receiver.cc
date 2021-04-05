@@ -19,15 +19,18 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     } else if (!SYN)
         return;
     uint64_t index = unwrap(seg.header().seqno, ISN, checkpoint);
-    if(seg.header().seqno == ISN && seg.payload().size() != 0 && repeat) return;
-    if(index >= checkpoint + _capacity - unassembled_bytes() + 1) return;
+    if (seg.header().seqno == ISN && seg.payload().size() != 0 && repeat)
+        return;
+//    if (index >= checkpoint + _capacity - unassembled_bytes() + 1)
+//        return;
     _reassembler.push_substring(seg.payload().copy(), (index > 0 ? index - 1 : 0), seg.header().fin);
     checkpoint = index;
     if (seg.header().seqno == ACKNO || seg.header().syn) {
         uint32_t F = (_reassembler.stream_out().input_ended() ? 1 : 0);
         ACKNO = wrap(_reassembler.index() + 1 + F, ISN);
     }
-    if(SYN) repeat = true;
+    if (SYN)
+        repeat = true;
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const {
