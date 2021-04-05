@@ -18,7 +18,7 @@ size_t TCPConnection::bytes_in_flight() const { return _sender.bytes_in_flight()
 
 size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_bytes(); }
 
-size_t TCPConnection::time_since_last_segment_received() const { return {}; }
+size_t TCPConnection::time_since_last_segment_received() const { return count_time_receiver; }
 
 void TCPConnection::segment_received(const TCPSegment &seg) {
     count_time_receiver = 0;
@@ -87,9 +87,34 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
         is_active = false;
     }
     test_stop_connection();
+    _sender.fill_window();
+    while(!_sender.segments_out().empty()){
+        TCPSegment t = _sender.segments_out().front();
+        _sender.segments_out().pop();
+        if(_receiver.ackno().has_value()) {
+            t.header().ack = true;
+            t.header().ackno = _receiver.ackno().value();
+        }
+        t.header().win = _receiver.window_size();
+        _segments_out.push(t);
+    }
 }
 
-void TCPConnection::end_input_stream() { _sender.stream_in().end_input(); }
+void TCPConnection::end_input_stream() { 
+    _sender.stream_in().end_input(); 
+    _sender.fill_window();
+    while(!_sender.segments_out().empty()){
+        TCPSegment t = _sender.segments_out().front();
+        _sender.segments_out().pop();
+        if(_receiver.ackno().has_value()) {
+            t.header().ack = true;
+            t.header().ackno = _receiver.ackno().value();
+        }
+        t.header().win = _receiver.window_size();
+        _segments_out.push(t);
+    }
+    test_stop_connection();
+}
 
 void TCPConnection::connect() { 
     _sender.fill_window(); 
