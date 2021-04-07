@@ -31,26 +31,11 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         _sender.ack_received(seg.header().ackno, seg.header().win);
     _sender.fill_window();
 
-    /*
-        std::cout << " len: " << _sender.segments_out().size();
-        std::cout << " re_ackno: " << _receiver.ackno().value();
-        std::cout << " seg_seqno: " << seg.header().seqno << std::endl;
-        */
-
-    // std::cout << " unbytes: " << unassembled_bytes() << std::endl;
-
     // send ack for new data
     if (_sender.segments_out().empty()) {
-    /*
-        bool c1 = (_receiver.ackno().value().raw_value() > seg.header().seqno.raw_value());
-        bool c2 = (seg.header().seqno.raw_value() >=
-                   (_receiver.ckpoint() + _cfg.recv_capacity + _receiver.isn().raw_value()));
-        if (c1 || c2)
-        */
-//        bool c1 = (_receiver.isn() != seg.header().seqno);
         bool c2 = seg.payload().size();
         bool c3 = seg.header().syn || seg.header().fin;
-        if(c2 || c3)
+        if (c2 || c3)
             _sender.send_empty_segment();
     }
 
@@ -71,7 +56,6 @@ size_t TCPConnection::write(const string &data) {
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
-
     bool p1 = (_receiver.stream_out().eof() && (_receiver.unassembled_bytes() == 0));
     bool p3 = ((_sender.bytes_in_flight() == 0) && _sender.stream_in().eof());
     if (p1 && p3 && _linger_after_streams_finish) {
@@ -79,14 +63,14 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     }
 
     _sender.tick(ms_since_last_tick);
-    if (_sender.consecutive_retransmissions() == TCPConfig::MAX_RETX_ATTEMPTS) {
+    if (_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
         _sender.fill_window();
         if (_sender.segments_out().empty())
             _sender.send_empty_segment();
         TCPSegment t = segment_to_send();
         t.header().rst = true;
         _segments_out.push(t);
-//        set_error();
+        set_error();
     }
     test_stop_connection();
     while (!_sender.segments_out().empty()) {
