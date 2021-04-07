@@ -71,7 +71,13 @@ size_t TCPConnection::write(const string &data) {
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
 void TCPConnection::tick(const size_t ms_since_last_tick) {
-    count_time_receiver += ms_since_last_tick;
+
+    bool p1 = (_receiver.stream_out().eof() && (_receiver.unassembled_bytes() == 0));
+    bool p3 = ((_sender.bytes_in_flight() == 0) && _sender.stream_in().eof());
+    if (p1 && p3 && _linger_after_streams_finish) {
+        count_time_receiver += ms_since_last_tick;
+    }
+
     _sender.tick(ms_since_last_tick);
     if (_sender.consecutive_retransmissions() == TCPConfig::MAX_RETX_ATTEMPTS) {
         _sender.fill_window();
