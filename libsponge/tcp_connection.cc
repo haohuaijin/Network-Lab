@@ -33,9 +33,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 
     // send ack for new data
     if (_sender.segments_out().empty()) {
-        bool c2 = seg.payload().size();
-        bool c3 = seg.header().syn || seg.header().fin;
-        if (c2 || c3)
+        bool c1 = seg.payload().size();
+        bool c2 = seg.header().syn || seg.header().fin;
+        if (c1 || c2)
             _sender.send_empty_segment();
     }
 
@@ -97,7 +97,6 @@ TCPConnection::~TCPConnection() {
     try {
         if (active()) {
             cerr << "Warning: Unclean shutdown of TCPConnection\n";
-            // Your code here: need to send a RST segment to the peer
             _sender.fill_window();
             if (_sender.segments_out().empty())
                 _sender.send_empty_segment();
